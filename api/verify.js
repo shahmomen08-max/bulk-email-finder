@@ -1,41 +1,47 @@
 const dns = require('dns').promises;
 
-// Simple email syntax & domain MX record verifier
-async function checkEmail(email) {
-    // 1. Regex Syntax Check
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!regex.test(email)) {
-        return { email, status: 'invalid' };
-    }
+async function findEmailsForDomain(inputStr) {
+    let cleanDomain = inputStr.trim().toLowerCase();
+    cleanDomain = cleanDomain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
 
-    // 2. Domain MX Record Check
-    const domain = email.split('@')[1];
+    if (!cleanDomain) return { target: inputStr, emails: [], status: 'invalid domain' };
+
+    const commonPrefixes = ['info', 'contact', 'support', 'editor', 'guestpost', 'admin', 'sales'];
+    const validFound = [];
+
     try {
-        const mxRecords = await dns.resolveMx(domain);
-        if (mxRecords && mxRecords.length > 0) {
-            return { email, status: 'valid' };
-        } else {
-            return { email, status: 'invalid' };
+        const mxRecords = await dns.resolveMx(cleanDomain);
+        if (!mxRecords || mxRecords.length === 0) {
+            return { target: inputStr, emails: [], status: 'No MX records found' };
         }
+
+        for (const prefix of commonPrefixes) {
+            validFound.push(`${prefix}@${cleanDomain}`);
+        }
+
+        return {
+            target: cleanDomain,
+            emails: validFound,
+            status: 'success'
+        };
     } catch (error) {
-        return { email, status: 'invalid' };
+        return { target: inputStr, emails: [], status: 'Domain not active or invalid' };
     }
 }
 
-// Serverless function handler (Vercel compatible)
 module.exports = async (req, res) => {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { emails } = req.body;
-    if (!emails || !Array.isArray(emails)) {
+    const { domains } = req.body;
+    if (!domains || !Array.isArray(domains)) {
         return res.status(400).json({ error: 'Invalid input format' });
     }
 
     const results = [];
-    for (const email of emails) {
-        const result = await checkEmail(email);
+    for (const item of domains) {
+        const result = await findEmailsForDomain(item);
         results.push(result);
     }
 
