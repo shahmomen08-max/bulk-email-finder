@@ -3,59 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bulk Email Verifier - Shah Creative</title>
+    <title>Bulk Domain Email Finder & Verifier - Shah Creative</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h1 { color: #333; text-align: center; }
-        textarea { width: 100%; height: 150px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; margin-bottom: 15px; }
-        button { background: #007bff; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; width: 100%; }
-        button:hover { background: #0056b3; }
-        .results { margin-top: 20px; }
-        .result-item { padding: 10px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; }
-        .valid { background: #d4edda; color: #155724; }
-        .invalid { background: #f8d7da; color: #721c24; }
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --success-bg: rgba(16, 185, 129, 0.1);
+            --success-text: #34d399;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-color); color: var(--text-main); margin: 0; padding: 30px; }
+        .container { max-width: 900px; margin: 0 auto; background: var(--card-bg); padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); border: 1px solid var(--border); }
+        h1 { color: var(--text-main); text-align: center; margin-bottom: 8px; font-size: 26px; }
+        p.subtitle { text-align: center; color: var(--text-muted); margin-bottom: 30px; font-size: 14px; }
+        textarea { width: 100%; height: 180px; padding: 15px; border: 1px solid var(--border); background: #0f172a; color: var(--text-main); border-radius: 8px; font-size: 14px; margin-bottom: 20px; resize: vertical; box-sizing: border-box; }
+        textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2); }
+        button { background: var(--primary); color: white; border: none; padding: 14px 20px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 600; transition: background 0.2s; }
+        button:hover { background: var(--primary-hover); }
+        .results { margin-top: 30px; }
+        .result-card { background: #0f172a; border: 1px solid var(--border); padding: 20px; margin-bottom: 15px; border-radius: 8px; animation: fadeIn 0.3s ease-in-out; }
+        .domain-title { font-weight: 700; color: #38bdf8; margin-bottom: 12px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .email-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .email-tag { display: inline-flex; align-items: center; background: var(--success-bg); color: var(--success-text); border: 1px solid rgba(52, 211, 153, 0.2); padding: 6px 12px; border-radius: 6px; font-size: 13px; font-family: monospace; }
+        .no-email { color: #f43f5e; font-style: italic; font-size: 14px; background: rgba(244, 63, 94, 0.1); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(244, 63, 94, 0.2); display: inline-block; }
+        .loading { text-align: center; color: var(--text-muted); font-style: italic; padding: 20px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Bulk Email Verifier</h1>
-        <p>Ek line mein ek email enter karein (Snov.io style verification):</p>
-        <textarea id="emailInput" placeholder="example1@domain.com&#10;example2@domain.com"></textarea>
-        <button onclick="verifyEmails()">Verify Emails</button>
+        <h1>Bulk Domain Email Finder</h1>
+        <p class="subtitle">Guest posting ke liye websites ki active emails bulk mein extract karein (Snov.io style)</p>
+        
+        <textarea id="domainInput" placeholder="example1.com&#10;example2.com&#10;techblog.com"></textarea>
+        <button onclick="findEmails()">Extract & Verify Emails</button>
         
         <div class="results" id="resultsContainer"></div>
     </div>
 
     <script>
-        async function verifyEmails() {
-            const input = document.getElementById('emailInput').value;
-            const emails = input.split('\n').map(e => e.trim()).filter(e => e);
+        async function findEmails() {
+            const input = document.getElementById('domainInput').value;
+            const domains = input.split('\n').map(d => d.trim()).filter(d => d);
             const container = document.getElementById('resultsContainer');
-            container.innerHTML = 'Verifying...';
-
-            if (emails.length === 0) {
-                container.innerHTML = 'Kareeb kam az kam ek email toh enter karein!';
+            
+            if (domains.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #f43f5e; padding: 15px;">Kam az kam ek website/domain toh enter karein!</div>';
                 return;
             }
+
+            container.innerHTML = '<div class="loading">Extraction jari hai, baraye meherbani intezaar karein...</div>';
 
             try {
                 const response = await fetch('/api/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ emails })
+                    body: JSON.stringify({ domains })
                 });
                 const data = await response.json();
                 
                 container.innerHTML = '';
                 data.results.forEach(res => {
-                    const div = document.createElement('div');
-                    div.className = `result-item ${res.status}`;
-                    div.innerHTML = `<span>${res.email}</span> <strong>${res.status.toUpperCase()}</strong>`;
-                    container.appendChild(div);
+                    const card = document.createElement('div');
+                    card.className = 'result-card';
+                    
+                    let emailsHTML = '';
+                    if (res.emails && res.emails.length > 0) {
+                        emailsHTML = `<div class="email-list">` + res.emails.map(e => `<span class="email-tag">✉️ ${e}</span>`).join('') + `</div>`;
+                    } else {
+                        emailsHTML = `<span class="no-email">❌ Active contact email nahi mili (No MX / Inactive domain)</span>`;
+                    }
+
+                    card.innerHTML = `
+                        <div class="domain-title">🌐 ${res.target}</div>
+                        <div>${emailsHTML}</div>
+                    `;
+                    container.appendChild(card);
                 });
             } catch (err) {
-                container.innerHTML = 'Verification mein koi error aa gaya hai.';
+                container.innerHTML = '<div style="text-align: center; color: #f4f7f6; padding: 15px;">Data process karne mein koi error aa gaya hai. Dobara koshish karein.</div>';
             }
         }
     </script>
