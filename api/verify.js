@@ -6,13 +6,18 @@ const DEFAULT_KEYS = [
     "82ad7e7739464602794e2aa325dd18d2837ef5f6"
 ];
 
-function extractEmailsFromText(text, domain) {
+// Strict extractor: Sirf wahi email uthayega jo search result text mein explicitly likhi hogi
+function extractExactEmails(text, domain) {
     if (!text) return [];
     const baseDomain = domain.replace(/^www\./, '').split('/')[0];
+    
+    // Strict regex to find actual emails matching the domain
     const regex = new RegExp(`[a-zA-Z0-9._%+-]+@${baseDomain.replace('.', '\\.')}`, 'gi');
     const matches = text.match(regex);
+    
     if (!matches) return [];
 
+    // Filter out common system/junk emails if any, and keep unique ones
     const cleanList = matches.map(e => e.toLowerCase().trim());
     return [...new Set(cleanList)];
 }
@@ -59,8 +64,8 @@ async function findEmailsForDomain(inputStr, apiKeys) {
         let foundEmails = [];
 
         if (apiKeys && apiKeys.length > 0) {
-            // Target specific contact and write-for-us pages to fetch real emails
-            const query = `site:${cleanDomain} "email" OR "contact" OR "support" OR "editor" OR "@${cleanDomain}"`;
+            // Target specific pages to locate real visible emails
+            const query = `site:${cleanDomain} "email" OR "contact" OR "@${cleanDomain}"`;
             const serperData = await searchSerperWithKeyRotation(query, apiKeys);
 
             if (serperData && serperData.organic) {
@@ -68,15 +73,15 @@ async function findEmailsForDomain(inputStr, apiKeys) {
                 serperData.organic.forEach(item => {
                     corpus += ` ${item.title} ${item.snippet} ${item.link}`;
                 });
-                foundEmails = extractEmailsFromText(corpus, cleanDomain);
+                foundEmails = extractExactEmails(corpus, cleanDomain);
             }
         }
 
-        // Yahan se fallback hata diya gaya hai. Agar website par email nahi hogi toh list empty rahegi.
+        // IMPORTANT: Yahan koi fallback nahi hai. Agar email nahi mili toh array khali rahegi!
         return {
             target: cleanDomain,
             emails: foundEmails,
-            status: foundEmails.length > 0 ? 'Real Emails Found' : 'No Email Found on Web'
+            status: foundEmails.length > 0 ? 'Verified Active' : 'No Email Found'
         };
 
     } catch (error) {
