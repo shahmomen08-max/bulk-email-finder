@@ -21,13 +21,7 @@
         h1 { color: var(--text-main); text-align: center; margin-bottom: 8px; font-size: 26px; }
         p.subtitle { text-align: center; color: var(--text-muted); margin-bottom: 30px; font-size: 14px; }
         
-        /* API Input Section */
-        .api-section { background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 20px; }
-        .api-input-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; font-weight: 600; }
-        .api-input-group input { width: 100%; padding: 10px; background: #1e293b; border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-size: 13px; box-sizing: border-box; }
-        .api-input-group input:focus { outline: none; border-color: var(--primary); }
-
-        textarea { width: 100%; height: 160px; padding: 15px; border: 1px solid var(--border); background: #0f172a; color: var(--text-main); border-radius: 8px; font-size: 14px; margin-bottom: 15px; resize: vertical; box-sizing: border-box; }
+        textarea { width: 100%; height: 180px; padding: 15px; border: 1px solid var(--border); background: #0f172a; color: var(--text-main); border-radius: 8px; font-size: 14px; margin-bottom: 15px; resize: vertical; box-sizing: border-box; }
         textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2); }
         
         .action-bars { display: flex; gap: 12px; margin-bottom: 20px; }
@@ -54,14 +48,6 @@
         <h1>Bulk Domain Email Finder</h1>
         <p class="subtitle">Guest posting ke liye websites ki active emails bulk mein extract karein (Shah Creative)</p>
         
-        <!-- API Keys Section -->
-        <div class="api-section">
-            <div class="api-input-group">
-                <label for="serperKey">Serper API Keys (Multiple keys comma-separated lagayein)</label>
-                <input type="text" id="serperKey" value="2deb2e45775a3712192d77cfca6031eeff8105c0, 940b615114b3e4df189739e06f770c67246499a9, 82ad7e7739464602794e2aa325dd18d2837ef5f6">
-            </div>
-        </div>
-
         <textarea id="domainInput" placeholder="example1.com&#10;example2.com&#10;techblog.com"></textarea>
         
         <div class="action-bars">
@@ -76,7 +62,6 @@
     </div>
 
     <script>
-        // CSV Import Handler
         function handleCSVImport(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -107,7 +92,6 @@
         async function findEmails() {
             const input = document.getElementById('domainInput').value;
             const domains = input.split('\n').map(d => d.trim()).filter(d => d);
-            const serperApiKey = document.getElementById('serperKey').value.trim();
             const container = document.getElementById('resultsContainer');
             
             if (domains.length === 0) {
@@ -121,7 +105,7 @@
                 const response = await fetch('/api/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domains, serperApiKey })
+                    body: JSON.stringify({ domains })
                 });
                 const data = await response.json();
                 
