@@ -20,10 +20,25 @@
         .container { max-width: 900px; margin: 0 auto; background: var(--card-bg); padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); border: 1px solid var(--border); }
         h1 { color: var(--text-main); text-align: center; margin-bottom: 8px; font-size: 26px; }
         p.subtitle { text-align: center; color: var(--text-muted); margin-bottom: 30px; font-size: 14px; }
-        textarea { width: 100%; height: 180px; padding: 15px; border: 1px solid var(--border); background: #0f172a; color: var(--text-main); border-radius: 8px; font-size: 14px; margin-bottom: 20px; resize: vertical; box-sizing: border-box; }
+        
+        /* API Input Section */
+        .api-section { background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 20px; }
+        .api-input-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; font-weight: 600; }
+        .api-input-group input { width: 100%; padding: 10px; background: #1e293b; border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-size: 13px; box-sizing: border-box; }
+        .api-input-group input:focus { outline: none; border-color: var(--primary); }
+
+        textarea { width: 100%; height: 160px; padding: 15px; border: 1px solid var(--border); background: #0f172a; color: var(--text-main); border-radius: 8px; font-size: 14px; margin-bottom: 15px; resize: vertical; box-sizing: border-box; }
         textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2); }
-        button { background: var(--primary); color: white; border: none; padding: 14px 20px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 600; transition: background 0.2s; }
+        
+        .action-bars { display: flex; gap: 12px; margin-bottom: 20px; }
+        button { background: var(--primary); color: white; border: none; padding: 14px 20px; font-size: 16px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s; flex: 2; }
         button:hover { background: var(--primary-hover); }
+        
+        /* CSV Import Button */
+        .csv-btn { background: #334155; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: white; font-weight: 600; }
+        .csv-btn:hover { background: #475569; }
+        #csvFileInput { display: none; }
+
         .results { margin-top: 30px; }
         .result-card { background: #0f172a; border: 1px solid var(--border); padding: 20px; margin-bottom: 15px; border-radius: 8px; animation: fadeIn 0.3s ease-in-out; }
         .domain-title { font-weight: 700; color: #38bdf8; margin-bottom: 12px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
@@ -37,55 +52,103 @@
 <body>
     <div class="container">
         <h1>Bulk Domain Email Finder</h1>
-        <p class="subtitle">Guest posting ke liye websites ki active emails bulk mein extract karein (Snov.io style)</p>
+        <p class="subtitle">Guest posting ke liye websites ki active emails bulk mein extract karein (Shah Creative)</p>
         
+        <!-- API Keys Section -->
+        <div class="api-section">
+            <div class="api-input-group">
+                <label for="serperKey">Serper API Keys (Multiple keys comma-separated lagayein)</label>
+                <input type="text" id="serperKey" value="2deb2e45775a3712192d77cfca6031eeff8105c0, 940b615114b3e4df189739e06f770c67246499a9, 82ad7e7739464602794e2aa325dd18d2837ef5f6">
+            </div>
+        </div>
+
         <textarea id="domainInput" placeholder="example1.com&#10;example2.com&#10;techblog.com"></textarea>
-        <button onclick="findEmails()">Extract & Verify Emails</button>
+        
+        <div class="action-bars">
+            <button onclick="findEmails()">Extract & Verify Emails</button>
+            <label for="csvFileInput" class="csv-btn">
+                📁 Import CSV
+            </label>
+            <input type="file" id="csvFileInput" accept=".csv, .txt" onchange="handleCSVImport(event)">
+        </div>
         
         <div class="results" id="resultsContainer"></div>
     </div>
 
     <script>
+        // CSV Import Handler
+        function handleCSVImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.split(/\r\n|\n/);
+                const domains = [];
+
+                lines.forEach(line => {
+                    let clean = line.replace(/["']/g, '').split(',')[0].trim();
+                    if (clean && !clean.toLowerCase().includes('domain') && !clean.toLowerCase().includes('website')) {
+                        domains.push(clean);
+                    }
+                });
+
+                if (domains.length > 0) {
+                    document.getElementById('domainInput').value = domains.join('\n');
+                    alert(`${domains.length} domains CSV se successfully import ho gaye hain!`);
+                } else {
+                    alert("CSV file mein koi valid domain nahi mila.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
         async function findEmails() {
             const input = document.getElementById('domainInput').value;
             const domains = input.split('\n').map(d => d.trim()).filter(d => d);
+            const serperApiKey = document.getElementById('serperKey').value.trim();
             const container = document.getElementById('resultsContainer');
             
             if (domains.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: #f43f5e; padding: 15px;">Kam az kam ek website/domain toh enter karein!</div>';
+                container.innerHTML = '<div style="text-align: center; color: #f43f5e; padding: 15px;">Kam az kam ek website/domain enter karein!</div>';
                 return;
             }
 
-            container.innerHTML = '<div class="loading">Extraction jari hai, baraye meherbani intezaar karein...</div>';
+            container.innerHTML = '<div class="loading">Live search & extraction jari hai, baraye meherbani intezaar karein...</div>';
 
             try {
                 const response = await fetch('/api/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domains })
+                    body: JSON.stringify({ domains, serperApiKey })
                 });
                 const data = await response.json();
                 
                 container.innerHTML = '';
-                data.results.forEach(res => {
-                    const card = document.createElement('div');
-                    card.className = 'result-card';
-                    
-                    let emailsHTML = '';
-                    if (res.emails && res.emails.length > 0) {
-                        emailsHTML = `<div class="email-list">` + res.emails.map(e => `<span class="email-tag">✉️ ${e}</span>`).join('') + `</div>`;
-                    } else {
-                        emailsHTML = `<span class="no-email">❌ Active contact email nahi mili (No MX / Inactive domain)</span>`;
-                    }
+                if (data.results) {
+                    data.results.forEach(res => {
+                        const card = document.createElement('div');
+                        card.className = 'result-card';
+                        
+                        let emailsHTML = '';
+                        if (res.emails && res.emails.length > 0) {
+                            emailsHTML = `<div class="email-list">` + res.emails.map(e => `<span class="email-tag">✉️ ${e}</span>`).join('') + `</div>`;
+                        } else {
+                            emailsHTML = `<span class="no-email">❌ Active contact email nahi mili</span>`;
+                        }
 
-                    card.innerHTML = `
-                        <div class="domain-title">🌐 ${res.target}</div>
-                        <div>${emailsHTML}</div>
-                    `;
-                    container.appendChild(card);
-                });
+                        card.innerHTML = `
+                            <div class="domain-title">🌐 ${res.target}</div>
+                            <div>${emailsHTML}</div>
+                        `;
+                        container.appendChild(card);
+                    });
+                } else {
+                    container.innerHTML = '<div style="text-align: center; color: #f43f5e; padding: 15px;">API response sahi nahi mila.</div>';
+                }
             } catch (err) {
-                container.innerHTML = '<div style="text-align: center; color: #f4f7f6; padding: 15px;">Data process karne mein koi error aa gaya hai. Dobara koshish karein.</div>';
+                container.innerHTML = '<div style="text-align: center; color: #f43f5e; padding: 15px;">Data process karne mein koi error aa gaya hai.</div>';
             }
         }
     </script>
