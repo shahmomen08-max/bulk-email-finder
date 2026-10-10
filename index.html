@@ -1,140 +1,681 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bulk Domain Email Finder & Verifier - Shah Creative</title>
+    <meta name="theme-color" content="#0b1120">
+    <title>Bulk Email Finder | Shah Creative</title>
+
     <style>
         :root {
-            --primary: #4f46e5;
-            --primary-hover: #4338ca;
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border: #334155;
-            --success-bg: rgba(16, 185, 129, 0.1);
-            --success-text: #34d399;
+            --bg: #0b1120;
+            --card: #151f32;
+            --input: #0b1324;
+            --border: #2b3a52;
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --text: #f8fafc;
+            --muted: #9aa9bd;
+            --green: #34d399;
+            --yellow: #fbbf24;
+            --red: #fb7185;
+            --blue: #7dd3fc;
         }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-color); color: var(--text-main); margin: 0; padding: 30px; }
-        .container { max-width: 900px; margin: 0 auto; background: var(--card-bg); padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); border: 1px solid var(--border); }
-        h1 { color: var(--text-main); text-align: center; margin-bottom: 8px; font-size: 26px; }
-        p.subtitle { text-align: center; color: var(--text-muted); margin-bottom: 30px; font-size: 14px; }
-        
-        textarea { width: 100%; height: 180px; padding: 15px; border: 1px solid var(--border); background: #0f172a; color: var(--text-main); border-radius: 8px; font-size: 14px; margin-bottom: 15px; resize: vertical; box-sizing: border-box; }
-        textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2); }
-        
-        .action-bars { display: flex; gap: 12px; margin-bottom: 20px; }
-        button { background: var(--primary); color: white; border: none; padding: 14px 20px; font-size: 16px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s; flex: 2; }
-        button:hover { background: var(--primary-hover); }
-        
-        /* CSV Import Button */
-        .csv-btn { background: #334155; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: white; font-weight: 600; }
-        .csv-btn:hover { background: #475569; }
-        #csvFileInput { display: none; }
 
-        .results { margin-top: 30px; }
-        .result-card { background: #0f172a; border: 1px solid var(--border); padding: 20px; margin-bottom: 15px; border-radius: 8px; animation: fadeIn 0.3s ease-in-out; }
-        .domain-title { font-weight: 700; color: #38bdf8; margin-bottom: 12px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
-        .email-list { display: flex; flex-wrap: wrap; gap: 8px; }
-        .email-tag { display: inline-flex; align-items: center; background: var(--success-bg); color: var(--success-text); border: 1px solid rgba(52, 211, 153, 0.2); padding: 6px 12px; border-radius: 6px; font-size: 13px; font-family: monospace; }
-        .no-email { color: #f43f5e; font-style: italic; font-size: 14px; background: rgba(244, 63, 94, 0.1); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(244, 63, 94, 0.2); display: inline-block; }
-        .loading { text-align: center; color: var(--text-muted); font-style: italic; padding: 20px; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .container {
+            max-width: 950px;
+            margin: 0 auto;
+            padding: 28px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 15px 40px rgba(0,0,0,.25);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            margin: 0 0 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 0 0 24px;
+        }
+
+        .notice {
+            background: #302819;
+            color: #fde68a;
+            border: 1px solid #66532d;
+            border-radius: 10px;
+            padding: 13px;
+            margin-bottom: 18px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        textarea {
+            display: block;
+            width: 100%;
+            min-height: 180px;
+            padding: 15px;
+            resize: vertical;
+            background: var(--input);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font: 14px/1.6 monospace;
+        }
+
+        textarea:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 1px;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        button,
+        .file-label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            background: #26344b;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover,
+        .file-label:hover {
+            filter: brightness(1.15);
+        }
+
+        button:disabled {
+            opacity: .55;
+            cursor: wait;
+        }
+
+        .primary {
+            flex: 2;
+            min-width: 180px;
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .primary:hover {
+            background: var(--primary-hover);
+        }
+
+        #csvInput {
+            display: none;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        .toolbar h2 {
+            font-size: 19px;
+            margin: 0;
+        }
+
+        #status {
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-top: 18px;
+            overflow-wrap: anywhere;
+        }
+
+        .result-card {
+            background: var(--input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 17px;
+            margin-top: 13px;
+        }
+
+        .domain {
+            color: var(--blue);
+            font-size: 16px;
+            font-weight: bold;
+            overflow-wrap: anywhere;
+            margin-bottom: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 9px;
+            border-radius: 6px;
+            background: rgba(251,191,36,.1);
+            color: var(--yellow);
+            font-size: 11px;
+            font-weight: bold;
+            overflow-wrap: anywhere;
+        }
+
+        .email-card {
+            margin-top: 12px;
+            padding: 12px;
+            border: 1px solid #245c53;
+            background: rgba(16,185,129,.07);
+            border-radius: 9px;
+        }
+
+        .email-address {
+            color: var(--green);
+            font-family: monospace;
+            font-size: 14px;
+            overflow-wrap: anywhere;
+            margin-bottom: 8px;
+        }
+
+        .email-role,
+        .meta {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.7;
+            overflow-wrap: anywhere;
+        }
+
+        .source-link {
+            display: inline-block;
+            color: var(--blue);
+            font-size: 12px;
+            margin-top: 7px;
+            overflow-wrap: anywhere;
+        }
+
+        .copy-button {
+            padding: 7px 10px;
+            margin-top: 9px;
+            font-size: 12px;
+        }
+
+        .empty {
+            color: var(--red);
+            font-size: 13px;
+            line-height: 1.6;
+            margin-top: 10px;
+        }
+
+        .footer {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.7;
+            margin-top: 24px;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                padding: 17px;
+            }
+
+            h1 {
+                font-size: 23px;
+            }
+
+            .actions button,
+            .actions .file-label {
+                flex: 1 1 100%;
+                min-height: 44px;
+            }
+        }
     </style>
 </head>
+
 <body>
-    <div class="container">
+    <main class="container">
+
         <h1>Bulk Domain Email Finder</h1>
-        <p class="subtitle">Guest posting ke liye websites ki active emails bulk mein extract karein (Shah Creative)</p>
-        
-        <textarea id="domainInput" placeholder="example1.com&#10;example2.com&#10;techblog.com"></textarea>
-        
-        <div class="action-bars">
-            <button onclick="findEmails()">Extract & Verify Emails</button>
-            <label for="csvFileInput" class="csv-btn">
-                📁 Import CSV
-            </label>
-            <input type="file" id="csvFileInput" accept=".csv, .txt" onchange="handleCSVImport(event)">
+
+        <p class="subtitle">
+            Discover publicly listed website emails for guest-posting research.
+            <br>Shah Creative
+        </p>
+
+        <div class="notice">
+            <strong>Important:</strong>
+            This tool scans public website pages. An email found on a website
+            is not automatically an active inbox, and it does not confirm that
+            the website accepts guest posts.
         </div>
-        
-        <div class="results" id="resultsContainer"></div>
-    </div>
 
-    <script>
-        function handleCSVImport(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+        <label for="domainInput">
+            Enter website domains — one per line
+        </label>
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const text = e.target.result;
-                const lines = text.split(/\r\n|\n/);
-                const domains = [];
+        <textarea
+            id="domainInput"
+            placeholder="example.com&#10;example.co.uk&#10;https://sample.org"
+            spellcheck="false"
+        ></textarea>
 
-                lines.forEach(line => {
-                    let clean = line.replace(/["']/g, '').split(',')[0].trim();
-                    if (clean && !clean.toLowerCase().includes('domain') && !clean.toLowerCase().includes('website')) {
-                        domains.push(clean);
+        <div class="actions">
+            <button
+                class="primary"
+                id="scanButton"
+                type="button"
+                onclick="findEmails()"
+            >
+                Scan Websites
+            </button>
+
+            <label class="file-label" for="csvInput">
+                Import CSV
+            </label>
+
+            <input
+                type="file"
+                id="csvInput"
+                accept=".csv,.txt"
+            >
+
+            <button
+                type="button"
+                onclick="clearAll()"
+            >
+                Clear
+            </button>
+
+            <button
+                type="button"
+                onclick="exportCSV()"
+            >
+                Export Results CSV
+            </button>
+        </div>
+
+        <div id="status" role="status" aria-live="polite"></div>
+
+        <div class="toolbar">
+            <h2>Search Results</h2>
+            <span class="meta" id="resultCount">0 websites</span>
+        </div>
+
+        <div id="results"></div>
+
+        <p class="footer">
+            No Serper API key is required by this frontend.
+            Results depend on which public pages the backend can access.
+            Some websites may block automated requests.
+            MX records do not prove that an individual inbox exists.
+        </p>
+
+    </main>
+
+<script>
+"use strict";
+
+const domainInput = document.getElementById("domainInput");
+const csvInput = document.getElementById("csvInput");
+const scanButton = document.getElementById("scanButton");
+const statusBox = document.getElementById("status");
+const resultsBox = document.getElementById("results");
+const resultCount = document.getElementById("resultCount");
+
+let latestResults = [];
+
+function createElement(tag, className, text) {
+    const element = document.createElement(tag);
+
+    if (className) {
+        element.className = className;
+    }
+
+    if (text !== undefined) {
+        element.textContent = text;
+    }
+
+    return element;
+}
+
+function normalizeInput(value) {
+    return String(value || "").trim();
+}
+
+csvInput.addEventListener("change", function(event) {
+    const file = event.target.files &&
+                 event.target.files[0];
+
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function() {
+        const lines = String(reader.result || "")
+            .split(/\r?\n/);
+
+        const domains = [];
+
+        for (const line of lines) {
+            const value = line
+                .replace(/^["']|["']$/g, "")
+                .split(",")[0]
+                .trim();
+
+            if (
+                value &&
+                !/^(domain|website|url)$/i.test(value)
+            ) {
+                domains.push(value);
+            }
+        }
+
+        domainInput.value = domains.join("\n");
+
+        statusBox.textContent =
+            `Imported ${domains.length} entries from CSV.`;
+    };
+
+    reader.onerror = function() {
+        statusBox.textContent = "Could not read the selected file.";
+    };
+
+    reader.readAsText(file);
+    event.target.value = "";
+});
+
+function clearAll() {
+    domainInput.value = "";
+    resultsBox.replaceChildren();
+    statusBox.textContent = "";
+    resultCount.textContent = "0 websites";
+    latestResults = [];
+}
+
+function getDomainList() {
+    return [...new Set(
+        domainInput.value
+            .split(/\r?\n/)
+            .map(normalizeInput)
+            .filter(Boolean)
+    )];
+}
+
+function renderResult(item) {
+    const card = createElement("section", "result-card");
+
+    card.appendChild(
+        createElement("div", "domain", "🌐 " + (item.target || "Unknown domain"))
+    );
+
+    const badgeText = String(item.status || "unknown")
+        .replace(/_/g, " ")
+        .toUpperCase();
+
+    card.appendChild(
+        createElement("span", "status-badge", badgeText)
+    );
+
+    const meta = [
+        item.mxStatus ? "MX: " + item.mxStatus : "",
+        Number.isFinite(item.pagesScanned)
+            ? "Pages scanned: " + item.pagesScanned
+            : ""
+    ].filter(Boolean).join(" · ");
+
+    if (meta) {
+        card.appendChild(createElement("div", "meta", meta));
+    }
+
+    const details = Array.isArray(item.emailDetails)
+        ? item.emailDetails
+        : [];
+
+    if (details.length) {
+        for (const detail of details) {
+            const emailCard = createElement("div", "email-card");
+
+            emailCard.appendChild(
+                createElement("div", "email-address", "✉ " + (detail.email || ""))
+            );
+
+            emailCard.appendChild(
+                createElement(
+                    "div",
+                    "email-role",
+                    (detail.role || "Unknown role") +
+                    " · Inbox not verified"
+                )
+            );
+
+            if (detail.sourceUrl) {
+                try {
+                    const sourceUrl = new URL(detail.sourceUrl);
+
+                    if (
+                        sourceUrl.protocol === "https:" ||
+                        sourceUrl.protocol === "http:"
+                    ) {
+                        const link = createElement(
+                            "a",
+                            "source-link",
+                            "Open source page"
+                        );
+
+                        link.href = sourceUrl.href;
+                        link.target = "_blank";
+                        link.rel = "noopener noreferrer";
+
+                        emailCard.appendChild(link);
                     }
-                });
-
-                if (domains.length > 0) {
-                    document.getElementById('domainInput').value = domains.join('\n');
-                    alert(`${domains.length} domains CSV se successfully import ho gaye hain!`);
-                } else {
-                    alert("CSV file mein koi valid domain nahi mila.");
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        async function findEmails() {
-            const input = document.getElementById('domainInput').value;
-            const domains = input.split('\n').map(d => d.trim()).filter(d => d);
-            const container = document.getElementById('resultsContainer');
-            
-            if (domains.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: #f43f5e; padding: 15px;">Kam az kam ek website/domain enter karein!</div>';
-                return;
+                } catch {}
             }
 
-            container.innerHTML = '<div class="loading">Live search & extraction jari hai, baraye meherbani intezaar karein...</div>';
+            const copyButton = createElement(
+                "button",
+                "copy-button",
+                "Copy Email"
+            );
 
-            try {
-                const response = await fetch('/api/verify', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ domains })
-                });
-                const data = await response.json();
-                
-                container.innerHTML = '';
-                if (data.results) {
-                    data.results.forEach(res => {
-                        const card = document.createElement('div');
-                        card.className = 'result-card';
-                        
-                        let emailsHTML = '';
-                        if (res.emails && res.emails.length > 0) {
-                            emailsHTML = `<div class="email-list">` + res.emails.map(e => `<span class="email-tag">✉️ ${e}</span>`).join('') + `</div>`;
-                        } else {
-                            emailsHTML = `<span class="no-email">❌ Active contact email nahi mili</span>`;
-                        }
+            copyButton.type = "button";
 
-                        card.innerHTML = `
-                            <div class="domain-title">🌐 ${res.target}</div>
-                            <div>${emailsHTML}</div>
-                        `;
-                        container.appendChild(card);
-                    });
-                } else {
-                    container.innerHTML = '<div style="text-align: center; color: #f43f5e; padding: 15px;">API response sahi nahi mila.</div>';
+            copyButton.addEventListener("click", async function() {
+                try {
+                    await navigator.clipboard.writeText(detail.email);
+                    statusBox.textContent = "Email copied.";
+                } catch {
+                    statusBox.textContent =
+                        "Copy unavailable. Please select and copy the email manually.";
                 }
-            } catch (err) {
-                container.innerHTML = '<div style="text-align: center; color: #f43f5e; padding: 15px;">Data process karne mein koi error aa gaya hai.</div>';
-            }
+            });
+
+            emailCard.appendChild(copyButton);
+            card.appendChild(emailCard);
         }
-    </script>
+    } else {
+        card.appendChild(
+            createElement(
+                "div",
+                "empty",
+                item.note ||
+                "No email found on scanned pages. The website may block automated requests."
+            )
+        );
+    }
+
+    if (item.note) {
+        card.appendChild(createElement("div", "meta", item.note));
+    }
+
+    return card;
+}
+
+async function findEmails() {
+    const domains = getDomainList();
+
+    if (!domains.length) {
+        statusBox.textContent = "Please enter at least one domain.";
+        return;
+    }
+
+    if (domains.length > 10) {
+        statusBox.textContent =
+            "Please scan no more than 10 domains per request.";
+        return;
+    }
+
+    scanButton.disabled = true;
+    statusBox.textContent =
+        "Scanning public website pages. Please wait...";
+    resultsBox.replaceChildren();
+    latestResults = [];
+    resultCount.textContent = "Scanning...";
+
+    try {
+        const response = await fetch("/api/verify", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ domains })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error || "Request failed with status " + response.status
+            );
+        }
+
+        if (!Array.isArray(data.results)) {
+            throw new Error("Unexpected API response.");
+        }
+
+        latestResults = data.results;
+
+        for (const item of latestResults) {
+            resultsBox.appendChild(renderResult(item));
+        }
+
+        resultCount.textContent =
+            `${latestResults.length} website(s)`;
+
+        statusBox.textContent =
+            "Scan completed. Emails shown as found are not confirmed active inboxes.";
+
+    } catch (error) {
+        resultCount.textContent = "0 websites";
+
+        statusBox.textContent =
+            "Could not scan websites: " + error.message +
+            ". Make sure api/verify.js is deployed in Vercel.";
+    } finally {
+        scanButton.disabled = false;
+    }
+}
+
+function exportCSV() {
+    if (!latestResults.length) {
+        statusBox.textContent = "No results to export yet.";
+        return;
+    }
+
+    const rows = [[
+        "Website",
+        "Email",
+        "Role",
+        "Verification Status",
+        "MX Status",
+        "Source URL"
+    ]];
+
+    for (const result of latestResults) {
+        const details = Array.isArray(result.emailDetails)
+            ? result.emailDetails
+            : [];
+
+        if (!details.length) {
+            rows.push([
+                result.target || "",
+                "",
+                "",
+                result.status || "",
+                result.mxStatus || "",
+                ""
+            ]);
+            continue;
+        }
+
+        for (const detail of details) {
+            rows.push([
+                result.target || "",
+                detail.email || "",
+                detail.role || "",
+                detail.status || "INBOX_UNVERIFIED",
+                result.mxStatus || "",
+                detail.sourceUrl || ""
+            ]);
+        }
+    }
+
+    const escapeCSV = value =>
+        '"' + String(value ?? "").replace(/"/g, '""') + '"';
+
+    const csv = rows.map(row =>
+        row.map(escapeCSV).join(",")
+    ).join("\r\n");
+
+    const blob = new Blob(
+        ["\uFEFF" + csv],
+        { type: "text/csv;charset=utf-8;" }
+    );
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "bulk-email-finder-results.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(url);
+    statusBox.textContent = "CSV export started.";
+}
+</script>
 </body>
-</html>
+        </html>
