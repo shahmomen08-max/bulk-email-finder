@@ -1,114 +1,211 @@
-const dns = require('dns').promises;
 
-// Aapki secure API keys (Backend par hidden rahengi)
-const DEFAULT_KEYS = [
-    "2deb2e45775a3712192d77cfca6031eeff8105c0",
-    "940b615114b3e4df189739e06f770c67246499a9",
-    "82ad7e7739464602794e2aa325dd18d2837ef5f6"
-];
+const dns = require("dns").promises;
 
-function extractEmailsFromText(text, domain) {
-    if (!text) return [];
-    const cleanDom = domain.replace(/^www\./, '');
-    const regex = new RegExp(`[a-zA-Z0-9._%+-]+@${cleanDom.replace('.', '\\.')}`, 'gi');
-    const matches = text.match(regex);
-    if (!matches) return [];
-    
-    return [...new Set(matches.map(e => e.toLowerCase()))];
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function cleanDomain(input) {
+  return String(input || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .split(/[/?#]/)[0]
+    .replace(/:\d+$/, "");
 }
 
-async function searchSerperWithKeyRotation(query, apiKeys) {
-    for (let i = 0; i < apiKeys.length; i++) {
-        const apiKey = apiKeys[i];
-        if (!apiKey) continue;
-
-        try {
-            const response = await fetch('https://google.serper.dev/search', {
-                method: 'POST',
-                headers: {
-                    'X-API-KEY': apiKey,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ q: query, num: 5 })
-            });
-
-            if (response.status === 200) {
-                const data = await response.json();
-                return data;
-            } else if (response.status === 403 || response.status === 429) {
-                console.log(`Key ${i + 1} limit reached. Switching to next key...`);
-            }
-        } catch (err) {
-            console.error(`Error with Key ${i + 1}:`, err.message);
-        }
-    }
-    return null;
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function findEmailsForDomain(inputStr, apiKeys) {
-    let cleanDomain = inputStr.trim().toLowerCase();
-    cleanDomain = cleanDomain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+function getRole(email) {
+  const name = email.split("@")[0];
 
-    if (!cleanDomain) return { target: inputStr, emails: [], status: 'invalid domain' };
+  if (/editor|editorial|newsroom|journalist/i.test(name))
+    return "Editorial";
+  if (/guest|contribut|write|submit|author/i.test(name))
+    return "Guest posting candidate";
+  if (/sales|advertis|sponsor|media/i.test(name))
+    return "Sales / Advertising";
+  if (/complaint|abuse|legal|privacy/i.test(name))
+    return "Other";
+  if (/info|contact|hello|enquir|admin/i.test(name))
+    return "General contact";
 
+  return "Unknown";
+}
+
+function getKeys() {
+  return [
+    process.env.SERPER_API_KEY_1,
+    process.env.SERPER_API_KEY_2,
+    process.env.SERPER_API_KEY_3
+  ].filter(Boolean);
+}
+
+async function searchWithRotation(query, keys) {
+  if (!keys.length) {
+    throw new Error("No Serper API keys configured");
+  }
+
+  let lastError = "All configured keys failed";
+
+  for (let i = 0; i < keys.length; i++) {
     try {
-        const mxRecords = await dns.resolveMx(cleanDomain);
-        if (!mxRecords || mxRecords.length === 0) {
-            return { target: cleanDomain, emails: [], status: 'No MX records found' };
+      const response = await fetch(
+        "https://google.serper.dev/search",
+        {
+          method: "POST",
+          headers: {
+            "X-API-KEY": keys[i],
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ q: query, num: 10 })
         }
+      );
 
-        let realEmails = [];
+      if (response.ok) {
+        return await response.json();
+      }
 
-        if (apiKeys && apiKeys.length > 0) {
-            const query = `site:${cleanDomain} "email" OR "contact" OR "@${cleanDomain}"`;
-            const serperData = await searchSerperWithKeyRotation(query, apiKeys);
+      lastError = `Serper returned HTTP ${response.status}`;
 
-            if (serperData && serperData.organic) {
-                let fullText = "";
-                serperData.organic.forEach(item => {
-                    fullText += ` ${item.title} ${item.snippet}`;
-                });
-                realEmails = extractEmailsFromText(fullText, cleanDomain);
-            }
-        }
+      // Only try another key for rate/limit or authorization errors.
+      if (![403, 429].includes(response.status)) {
+        throw new Error(lastError);
+      }
 
-        if (realEmails.length === 0) {
-            realEmails.push(`contact@${cleanDomain}`);
-        }
+      // Don't retry the same key; try the next configured key.
+      console.warn(`Serper key slot ${i + 1} failed: HTTP ${response.status}`);
+    } catch (err) {
+      lastError = err.message || "Search request failed";
 
-        return {
-            target: cleanDomain,
-            emails: realEmails,
-            status: 'success'
-        };
+      if (err.message?.includes("HTTP ") &&
+          !/HTTP (403|429)\b/.test(err.message)) {
+        throw err;
+      }
 
-    } catch (error) {
-        return { target: inputStr, emails: [], status: 'Domain not active or invalid' };
+      // Network errors get one brief retry, then rotation continues.
+      if (i < keys.length - 1) await sleep(300);
     }
+  }
+
+  throw new Error(lastError);
+}
+
+async function findEmails(rawDomain, keys) {
+  const domain = cleanDomain(rawDomain);
+
+  if (
+    !domain ||
+    domain.length > 253 ||
+    !/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain)
+  ) {
+    return {
+      target: String(rawDomain),
+      emails: [],
+      emailDetails: [],
+      status: "invalid_domain"
+    };
+  }
+
+  let mxStatus = "Not checked";
+
+  try {
+    const mx = await dns.resolveMx(domain);
+    mxStatus = mx.length ? "MX records found" : "No MX records returned";
+  } catch {
+    mxStatus = "MX records not confirmed";
+  }
+
+  try {
+    const query =
+      `site:${domain} (email OR contact OR editorial OR editor OR "write for us" OR "guest post")`;
+
+    const data = await searchWithRotation(query, keys);
+    const regex = new RegExp(
+      `[a-zA-Z0-9._%+-]+@${escapeRegex(domain)}`,
+      "gi"
+    );
+
+    const found = new Map();
+
+    for (const item of data.organic || []) {
+      const text = `${item.title || ""} ${item.snippet || ""}`;
+      const matches = text.match(regex) || [];
+
+      for (const value of matches) {
+        const email = value.toLowerCase();
+
+        if (!found.has(email)) {
+          found.set(email, {
+            email,
+            role: getRole(email),
+            sourceUrl: item.link || null,
+            verificationStatus: "UNVERIFIED"
+          });
+        }
+      }
+    }
+
+    const emailDetails = [...found.values()];
+
+    return {
+      target: domain,
+      emails: emailDetails.map(item => item.email),
+      emailDetails,
+      mxStatus,
+      status: emailDetails.length
+        ? "emails_found_unverified"
+        : "no_email_found"
+    };
+  } catch (err) {
+    console.error(`Search failed for ${domain}: ${err.message}`);
+
+    return {
+      target: domain,
+      emails: [],
+      emailDetails: [],
+      mxStatus,
+      status: "search_failed"
+    };
+  }
 }
 
 module.exports = async (req, res) => {
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
-    const { domains } = req.body;
-    if (!domains || !Array.isArray(domains)) {
-        return res.status(400).json({ error: 'Invalid input format' });
-    }
+  const keys = getKeys();
 
-    // Vercel Environment Variables ya Default Secure Keys use karega
-    let keysList = [
-        process.env.SERPER_API_KEY_1 || DEFAULT_KEYS[0],
-        process.env.SERPER_API_KEY_2 || DEFAULT_KEYS[1],
-        process.env.SERPER_API_KEY_3 || DEFAULT_KEYS[2]
-    ].filter(k => k);
+  if (!keys.length) {
+    return res.status(500).json({
+      error: "Serper API keys are not configured in Vercel"
+    });
+  }
 
-    const results = [];
-    for (const item of domains) {
-        const result = await findEmailsForDomain(item, keysList);
-        results.push(result);
-    }
+  const domains = req.body?.domains;
 
-    return res.status(200).json({ results });
+  if (!Array.isArray(domains) || !domains.length) {
+    return res.status(400).json({
+      error: "Provide a non-empty domains array"
+    });
+  }
+
+  if (domains.length > 25) {
+    return res.status(400).json({
+      error: "Maximum 25 domains per request"
+    });
+  }
+
+  const results = [];
+
+  for (const domain of domains) {
+    results.push(await findEmails(domain, keys));
+  }
+
+  return res.status(200).json({
+    results,
+    note: "Found emails are not confirmed active inboxes."
+  });
 };
