@@ -1,36 +1,20 @@
 const dns = require('dns').promises;
 
-// Aapki teeno secure Serper API keys
 const DEFAULT_KEYS = [
     "2deb2e45775a3712192d77cfca6031eeff8105c0",
     "940b615114b3e4df189739e06f770c67246499a9",
     "82ad7e7739464602794e2aa325dd18d2837ef5f6"
 ];
 
-// Guest Posting ke liye smart prioritization (Editor & Contact emails ko sabse upar rakhna)
-function sortGuestPostEmails(emails, domain) {
-    const priorityKeywords = ['editor', 'guestpost', 'contact', 'info', 'submissions', 'press', 'media', 'support'];
-    
-    return emails.sort((a, b) => {
-        let scoreA = 99, scoreB = 99;
-        priorityKeywords.forEach((kw, index) => {
-            if (a.includes(kw)) scoreA = index;
-            if (b.includes(kw)) scoreB = index;
-        });
-        return scoreA - scoreB;
-    });
-}
-
 function extractEmailsFromText(text, domain) {
     if (!text) return [];
-    const baseDomain = domain.replace(/^www\.,/, '').split('/')[0];
+    const baseDomain = domain.replace(/^www\./, '').split('/')[0];
     const regex = new RegExp(`[a-zA-Z0-9._%+-]+@${baseDomain.replace('.', '\\.')}`, 'gi');
     const matches = text.match(regex);
     if (!matches) return [];
 
     const cleanList = matches.map(e => e.toLowerCase().trim());
-    const uniqueEmails = [...new Set(cleanList)];
-    return sortGuestPostEmails(uniqueEmails, baseDomain);
+    return [...new Set(cleanList)];
 }
 
 async function searchSerperWithKeyRotation(query, apiKeys) {
@@ -67,7 +51,6 @@ async function findEmailsForDomain(inputStr, apiKeys) {
     if (!cleanDomain) return { target: inputStr, emails: [], status: 'Invalid domain' };
 
     try {
-        // MX Check
         const mxRecords = await dns.resolveMx(cleanDomain);
         if (!mxRecords || mxRecords.length === 0) {
             return { target: cleanDomain, emails: [], status: 'Inactive Domain (No MX)' };
@@ -76,8 +59,8 @@ async function findEmailsForDomain(inputStr, apiKeys) {
         let foundEmails = [];
 
         if (apiKeys && apiKeys.length > 0) {
-            // Specific queries to target guest posting and contact pages
-            const query = `site:${cleanDomain} "guest post" OR "write for us" OR "contact" OR "editor" OR "@${cleanDomain}"`;
+            // Target specific contact and write-for-us pages to fetch real emails
+            const query = `site:${cleanDomain} "email" OR "contact" OR "support" OR "editor" OR "@${cleanDomain}"`;
             const serperData = await searchSerperWithKeyRotation(query, apiKeys);
 
             if (serperData && serperData.organic) {
@@ -89,16 +72,11 @@ async function findEmailsForDomain(inputStr, apiKeys) {
             }
         }
 
-        // Agar specific email na mile toh standard high-deliverability guest post options suggest karein
-        if (foundEmails.length === 0) {
-            foundEmails.push(`editor@${cleanDomain}`);
-            foundEmails.push(`contact@${cleanDomain}`);
-        }
-
+        // Yahan se fallback hata diya gaya hai. Agar website par email nahi hogi toh list empty rahegi.
         return {
             target: cleanDomain,
             emails: foundEmails,
-            status: 'Verified Active'
+            status: foundEmails.length > 0 ? 'Real Emails Found' : 'No Email Found on Web'
         };
 
     } catch (error) {
