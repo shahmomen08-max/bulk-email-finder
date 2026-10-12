@@ -1,55 +1,47 @@
 const dns = require('dns').promises;
 
-const DEFAULT_KEYS = [
-    "2deb2e45775a3712192d77cfca6031eeff8105c0",
-    "940b615114b3e4df189739e06f770c67246499a9",
-    "82ad7e7739464602794e2aa325dd18d2837ef5f6"
-];
+// Aapki Single Nayi Serper API Key
+const SERPER_API_KEY = process.env.SERPER_API_KEY || "a9ec42e633ce3bc04f4874eede56462f2f123bc7";
 
-// Strict extractor: Sirf wahi email uthayega jo search result text mein explicitly likhi hogi
+// Strict extractor: Search result text se exact `@domain.com` email dhoondta hai
 function extractExactEmails(text, domain) {
     if (!text) return [];
     const baseDomain = domain.replace(/^www\./, '').split('/')[0];
     
-    // Strict regex to find actual emails matching the domain
     const regex = new RegExp(`[a-zA-Z0-9._%+-]+@${baseDomain.replace('.', '\\.')}`, 'gi');
     const matches = text.match(regex);
     
     if (!matches) return [];
 
-    // Filter out common system/junk emails if any, and keep unique ones
     const cleanList = matches.map(e => e.toLowerCase().trim());
     return [...new Set(cleanList)];
 }
 
-async function searchSerperWithKeyRotation(query, apiKeys) {
-    for (let i = 0; i < apiKeys.length; i++) {
-        const apiKey = apiKeys[i];
-        if (!apiKey) continue;
+async function searchSerper(query, apiKey) {
+    if (!apiKey) return null;
 
-        try {
-            const response = await fetch('https://google.serper.dev/search', {
-                method: 'POST',
-                headers: {
-                    'X-API-KEY': apiKey,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ q: query, num: 10 })
-            });
+    try {
+        const response = await fetch('https://google.serper.dev/search', {
+            method: 'POST',
+            headers: {
+                'X-API-KEY': apiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ q: query, num: 10 })
+        });
 
-            if (response.status === 200) {
-                return await response.json();
-            } else if (response.status === 403 || response.status === 429) {
-                console.log(`Key ${i + 1} exhausted, switching...`);
-            }
-        } catch (err) {
-            console.error(`Key error:`, err.message);
+        if (response.status === 200) {
+            return await response.json();
+        } else {
+            console.error(`Serper API error status: ${response.status}`);
         }
+    } catch (err) {
+        console.error(`Serper fetch error:`, err.message);
     }
     return null;
 }
 
-async function findEmailsForDomain(inputStr, apiKeys) {
+async function findEmailsForDomain(inputStr, apiKey) {
     let cleanDomain = inputStr.trim().toLowerCase();
     cleanDomain = cleanDomain.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
 
@@ -63,10 +55,9 @@ async function findEmailsForDomain(inputStr, apiKeys) {
 
         let foundEmails = [];
 
-        if (apiKeys && apiKeys.length > 0) {
-            // Target specific pages to locate real visible emails
+        if (apiKey) {
             const query = `site:${cleanDomain} "email" OR "contact" OR "@${cleanDomain}"`;
-            const serperData = await searchSerperWithKeyRotation(query, apiKeys);
+            const serperData = await searchSerper(query, apiKey);
 
             if (serperData && serperData.organic) {
                 let corpus = "";
@@ -77,7 +68,6 @@ async function findEmailsForDomain(inputStr, apiKeys) {
             }
         }
 
-        // IMPORTANT: Yahan koi fallback nahi hai. Agar email nahi mili toh array khali rahegi!
         return {
             target: cleanDomain,
             emails: foundEmails,
@@ -99,15 +89,9 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Invalid input format' });
     }
 
-    const keysList = [
-        process.env.SERPER_API_KEY_1 || DEFAULT_KEYS[0],
-        process.env.SERPER_API_KEY_2 || DEFAULT_KEYS[1],
-        process.env.SERPER_API_KEY_3 || DEFAULT_KEYS[2]
-    ].filter(k => k);
-
     const results = [];
     for (const item of domains) {
-        const result = await findEmailsForDomain(item, keysList);
+        const result = await findEmailsForDomain(item, SERPER_API_KEY);
         results.push(result);
     }
 
